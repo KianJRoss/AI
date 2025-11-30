@@ -1,0 +1,358 @@
+Goal: Provide a unified abstraction for all MCP communication.
+
+This is the foundation that everything else needs.
+
+16.1 Create mcp/protocol/
+
+request schema
+
+response schema
+
+tool schema
+
+capability schema
+
+event schema
+
+error schema
+
+model context container
+
+16.2 Create mcp/transports/
+
+Implement the generic interfaces:
+
+BaseTransport
+ ├─ StdioTransport
+ ├─ WebSocketTransport
+ ├─ HttpTransport
+ ├─ DockerTransport
+ └─ NodeAgentTransport
+
+16.3 Create mcp/connection_manager.py
+
+manages transport selection
+
+handles negotiation
+
+retries, timeouts, backoff
+
+multiplexed event streams
+
+watches for server crashes
+
+16.4 Tests
+
+protocol validation
+
+transport fallback
+
+connection errors
+
+🚀 SECTION 17 — MCP Client Engine (Used by Kernel & Workers)
+
+Goal: Provide a unified, high-level client abstraction.
+
+17.1 Create mcp/client/client.py
+
+Implements:
+
+connect()
+
+list_tools()
+
+call_tool(tool_name, args)
+
+subscribe_events()
+
+health_check()
+
+capability negotiation
+
+17.2 Add per-call metadata:
+
+capability_token
+
+trust_level
+
+sandbox requirements
+
+model context window
+
+17.3 Add retry policy, rate limiters
+17.4 Add caching layer for tool schemas
+17.5 Tests
+🚀 SECTION 18 — MCP Server Layer (Filesystem, Git, Process, Web, Container, Knowledge)
+
+Goal: Provide the tools that let ai-kernel see the world and manipulate it.
+
+Servers implemented in native FastAPI/FastMCP style.
+
+18.1 Filesystem MCP Server
+
+Tools: read_file, write_file, list_dir, stat, delete, create
+
+18.2 Git MCP Server
+
+Tools: diff, apply_patch, commit, checkout, create_branch, merge
+
+18.3 Process MCP Server
+
+Tools: exec, stream_output, kill
+Supports “safe mode” execution
+
+18.4 Web MCP Server
+
+Tools: fetch, snapshot, extract_text, download
+
+18.5 Container MCP Server
+
+Tools: spawn, stop, exec, mount, inspect
+
+18.6 Knowledge/Vector MCP Server
+
+Tools: store, embed, search, update
+
+18.7 Node Agent MCP Server (runs on Pi/PC workers)
+
+Tools: hardware_info, resource_usage, run_local_docker
+
+🚀 SECTION 19 — MCP Server Execution & Lifecycle Manager
+
+Goal: Central management system for launching/monitoring MCP servers.
+
+19.1 Create mcp/server_manager.py
+
+Handles:
+
+starting local servers
+
+stopping/restarting
+
+health checks
+
+monitoring logs
+
+version tracking
+
+hot-reloading
+
+19.2 Supports 3 modes:
+
+In-process servers (FastMCP local)
+
+Subprocess servers (STDIO)
+
+Remote servers (WebSocket/HTTP)
+
+19.3 Add metadata registry
+19.4 Add server logs to audit layer
+19.5 Tests
+🚀 SECTION 20 — Docker MCP Integration Layer
+
+Goal: Use Docker’s massive library of MCP servers.
+
+20.1 Create mcp/docker_manager.py
+
+Tools:
+
+pull image
+
+start MCP container
+
+attach STDIO/WebSocket
+
+map ports automatically
+
+container health
+
+auto-upgrade
+
+20.2 Add caching for:
+
+image → toolset hash
+
+version mapping
+
+known-good images
+
+20.3 Add registry of Docker-based MCP servers
+20.4 Tests
+🚀 SECTION 21 — MCP Catalog & Discovery System
+
+Goal: Automatically discover & register tools from any MCP source.
+
+21.1 Create mcp/catalog/
+
+Contains:
+
+MCP tool metadata
+
+known server definitions
+
+docker MCP references
+
+fastmcp python package list
+
+21.2 Add discovery scanner
+
+Scans:
+
+Docker images (“mcp-*”)
+
+Python packages (“fastmcp-*”)
+
+GitHub repos with “mcp-server” tag
+
+Running servers on local network
+
+Node agents
+
+21.3 Add /catalog/install
+
+Install external MCP servers into tool registry.
+
+21.4 Tests
+🚀 SECTION 22 — MCP Context Assembly Engine
+
+Goal: Build the “context window” dynamically using MCP resources.
+
+22.1 Create mcp/context_builder.py
+
+Pulls from:
+
+task history
+
+relevant files (fs server)
+
+repo state (git server)
+
+embeddings (knowledge server)
+
+node health
+
+available tools
+
+previous proposals
+
+22.2 Add pruning rules
+
+remove irrelevant files
+
+crop long logs
+
+enforce token limits
+
+22.3 Add augmentation rules
+
+insert tool signatures
+
+insert resource maps
+
+insert worker capabilities
+
+22.4 Tests
+🚀 SECTION 23 — MCP Security Layer
+
+Goal: Full isolation + permission filtering for MCP calls.
+
+23.1 Capability Tokens (Capability-based Security)
+
+Each MCP call uses:
+
+privilege level
+
+allowed MCP servers/tools
+
+allowed transports
+
+resource limits
+
+sandbox vs privileged mode
+
+23.2 Add PermissionGuard integration
+
+Interposes on every MCP call.
+
+23.3 Add ProcedureGuard protections
+
+Detect infinite loops, unsafe access patterns.
+
+23.4 Add Sandboxed Transport Mode
+
+For unsafe servers:
+
+redirect calls into container sandbox
+
+23.5 Add per-call auditing
+
+Logs everything into audit DB.
+
+23.6 Tests
+🚀 SECTION 24 — MCP Expansion Engine (AI-Created Tools)
+
+Goal: Allow ai-kernel to generate new MCP tools and integrate them.
+
+24.1 Create mcp/expansion/engine.py
+
+Capabilities:
+
+create new tool folder
+
+generate FastMCP server code
+
+write tool manifest
+
+generate tests
+
+generate dockerfile if needed
+
+24.2 Use Git MCP server to apply patches
+24.3 Use Sandbox MCP server to test new tools
+24.4 Register tool in catalog
+24.5 Emit proposal for kernel to review
+24.6 Tests
+🚀 SECTION 25 — MCP Self-Hosting Pipeline
+
+Goal: ai-kernel is able to maintain & upgrade its own codebase.
+
+25.1 Implement self-modifying proposals through MCP git server
+25.2 Use MCP container server to build and deploy updated workers
+25.3 Implement canary → production promotion
+25.4 Tool registry auto-updates
+25.5 Node agents auto-upgrade via MCP
+25.6 Add tests for safe self-modification
+
+(including guard-required validations)
+
+🚀 SECTION 26 — Multi-Node MCP Orchestration
+
+Goal: Multi-device MCP cluster (PC + laptop + Pi).
+
+26.1 Node agent MCP servers auto-register
+26.2 Router picks best node based on:
+
+health
+
+CPU/RAM
+
+GPU availability
+
+privilege requirement
+
+26.3 Add dynamic capability movement
+
+Workers can migrate MCP state across nodes.
+
+26.4 Support distributed MCP server discovery
+26.5 Tests
+🚀 SECTION 27 — Advanced Deployment & Production Hardening
+
+Goal: Put everything into production-level containers, k3s manifests, and monitoring.
+
+27.1 Build Helm charts
+27.2 Add Traefik/Gateway MCP-aware routing
+27.3 Add TLS, secret vault, IAM policies
+27.4 Add Prometheus metrics for MCP
+27.5 Add distributed tracing
+27.6 Add chaos testing for MCP servers
