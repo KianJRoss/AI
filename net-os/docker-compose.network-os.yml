@@ -1,0 +1,103 @@
+version: "3.9"
+
+# net-os supplementary services for PC (KianPuter)
+# Place this in C:\AI\orchestrator\docker\ next to docker-compose.yml
+# so services share the same docker_default network.
+#
+# Start with:
+#   docker --context pc-docker compose -f docker-compose.network-os.yml up -d
+#
+# Or merge with primary stack:
+#   docker --context pc-docker compose -f docker-compose.yml -f docker-compose.network-os.yml up -d
+
+services:
+
+  # -------------------------------------------------------------------------
+  # net-os central API — command router and node registry
+  # -------------------------------------------------------------------------
+  net-os-api:
+    image: net-os-api:latest
+    container_name: net-os-api
+    ports:
+      - "8080:8080"
+    volumes:
+      # Config files (projects.json, nodes.json)
+      - C:\AI\net-os\configs:/configs:ro
+      # Persistent SQLite DB
+      - net_os_data:/data
+      # Docker socket — lets net-os-api inspect containers
+      - //var/run/docker.sock:/var/run/docker.sock:ro
+      # SSH keys — for SSHing to PC host from inside container
+      - C:\Users\batma\.ssh:/root/.ssh:ro
+      # node-agent source (so /bootstrap/node-agent.py works)
+      - C:\AI\net-os\node-agent:/app/node-agent:ro
+    environment:
+      NET_OS_API_TOKEN: netosmasterkey
+      NODE_TOKEN: netoskeylocal
+      CONFIGS_DIR: /configs
+      DB_PATH: /data/nodes.db
+    restart: unless-stopped
+    networks:
+      - default
+
+  # -------------------------------------------------------------------------
+  # Redis — shared cache / pubsub for future use
+  # -------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: net-os-redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Portainer — Docker UI
+  # -------------------------------------------------------------------------
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    volumes:
+      - //var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Netdata — add later (requires Linux host path mounts; enable on WSL2 distro)
+  # -------------------------------------------------------------------------
+
+  # code-server: add after image is transferred (large ~1GB)
+  # docker pull codercom/code-server:latest on laptop, then docker save | ssh pc docker load
+
+  # -------------------------------------------------------------------------
+  # Caddy — reverse proxy
+  # -------------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: net-os-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - C:\AI\net-os\caddy\Caddyfile:/etc/caddy/Caddyfile:ro
+      - C:\AI\net-os\dashboard:/srv/dashboard:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  net_os_data:
+  redis_data:
+  portainer_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  default:
+    name: docker_default
+    external: true

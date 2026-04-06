@@ -1,0 +1,88 @@
+# net-os Caddy reverse proxy
+# Serves on port 80 — no TLS needed for Tailscale-only access
+# Tailscale handles encryption at the network layer.
+#
+# Bind to all interfaces so both LAN (192.168.0.x) and Tailscale (100.x.x.x) work.
+
+:80 {
+    # -------------------------------------------------------------------------
+    # Dashboard — static PWA
+    # -------------------------------------------------------------------------
+    handle /dashboard* {
+        root * /srv/dashboard
+        file_server
+        # SPA fallback: serve index.html for any missing file
+        try_files {path} /dashboard/index.html
+    }
+
+    # -------------------------------------------------------------------------
+    # net-os API
+    # -------------------------------------------------------------------------
+    handle /api* {
+        uri strip_prefix /api
+        reverse_proxy net-os-api:8080 {
+            header_up Host {upstream_hostport}
+            header_up X-Forwarded-Proto http
+            header_up X-Forwarded-For {remote_host}
+        }
+    }
+
+    # -------------------------------------------------------------------------
+    # Portainer UI
+    # -------------------------------------------------------------------------
+    handle /portainer* {
+        uri strip_prefix /portainer
+        reverse_proxy portainer:9000 {
+            header_up Host {upstream_hostport}
+        }
+    }
+
+    # -------------------------------------------------------------------------
+    # Netdata monitoring
+    # -------------------------------------------------------------------------
+    handle /monitor* {
+        uri strip_prefix /monitor
+        reverse_proxy netdata:19999 {
+            header_up Host {upstream_hostport}
+            header_up X-Forwarded-Proto http
+        }
+    }
+
+    # -------------------------------------------------------------------------
+    # code-server (VS Code in browser) — root path, handles its own auth
+    # -------------------------------------------------------------------------
+    handle {
+        reverse_proxy code-server:8080 {
+            header_up Host {upstream_hostport}
+            header_up X-Forwarded-Proto http
+            # Required for code-server websocket connections
+            header_up Upgrade {http.request.header.Upgrade}
+            header_up Connection {http.request.header.Connection}
+        }
+    }
+
+    # -------------------------------------------------------------------------
+    # Logging
+    # -------------------------------------------------------------------------
+    log {
+        output stdout
+        format console
+        level INFO
+    }
+
+    # -------------------------------------------------------------------------
+    # Compression
+    # -------------------------------------------------------------------------
+    encode gzip
+}
+
+# -------------------------------------------------------------------------
+# Optional: Tailscale HTTPS (if using Tailscale HTTPS certs)
+# Uncomment and set your Tailscale domain if desired.
+# -------------------------------------------------------------------------
+# kianputer.tailXXXX.ts.net {
+#     tls {
+#         get_certificate tailscale
+#     }
+#     import /etc/caddy/Caddyfile.d/*.conf
+# }

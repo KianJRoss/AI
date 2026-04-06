@@ -1,0 +1,32 @@
+{
+  "pc": {
+    "name": "pc",
+    "display": "KianPuter",
+    "ip": "192.168.0.27",
+    "tailscale_ip": null,
+    "port": 7700,
+    "os": "windows",
+    "role": "gateway",
+    "token": "netoskeylocal"
+  },
+  "laptop": {
+    "name": "laptop",
+    "display": "MSI Laptop",
+    "ip": "192.168.0.49",
+    "tailscale_ip": "100.123.23.84",
+    "port": 7700,
+    "os": "windows",
+    "role": "node",
+    "token": "netoskeylocal"
+  },
+  "pi": {
+    "name": "pi",
+    "display": "KianPotPi",
+    "ip": "192.168.0.209",
+    "tailscale_ip": "100.73.208.99",
+    "port": 7700,
+    "os": "linux",
+    "role": "node",
+    "token": "netoskeylocal"
+  }
+}

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>AI Network OS</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --bg2: #141414;
+      --bg3: #1e1e1e;
+      --border: #2a2a2a;
+      --text: #e0e0e0;
+      --muted: #888;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #eab308;
+      --blue: #3b82f6;
+      --cyan: #06b6d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Consolas', 'Monaco', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .75rem 1rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    header h1 { font-size: 1.1rem; color: var(--cyan); }
+    #refresh-indicator { font-size: .75rem; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .card-title { font-size: .8rem; color: var(--muted); margin-bottom: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+    .node-card { border-left: 3px solid var(--border); }
+    .node-card.online { border-left-color: var(--green); }
+    .node-card.offline { border-left-color: var(--red); }
+    .node-name { font-size: 1rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+      display: inline-block;
+    }
+    .status-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.offline { background: var(--red); }
+    .metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .5rem; margin-top: .75rem; }
+    .metric { text-align: center; }
+    .metric-val { font-size: 1.1rem; font-weight: bold; }
+    .metric-label { font-size: .65rem; color: var(--muted); }
+    .bar { height: 4px; background: var(--bg3); border-radius: 2px; margin-top: .25rem; }
+    .bar-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+    .bar-fill.low { background: var(--green); }
+    .bar-fill.med { background: var(--yellow); }
+    .bar-fill.high { background: var(--red); }
+    .node-ip { font-size: .7rem; color: var(--muted); margin-top: .5rem; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    th { color: var(--muted); font-weight: normal; text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--border); }
+    td { padding: .35rem .5rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .badge {
+      display: inline-block;
+      padding: .1rem .4rem;
+      border-radius: 3px;
+      font-size: .7rem;
+    }
+    .badge-green { background: rgba(34,197,94,.2); color: var(--green); }
+    .badge-red { background: rgba(239,68,68,.2); color: var(--red); }
+    .badge-blue { background: rgba(59,130,246,.2); color: var(--blue); }
+
+    .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+    button {
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: .5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: .8rem;
+      transition: background .2s, border-color .2s;
+    }
+    button:hover { background: var(--border); border-color: var(--cyan); }
+    button.primary { background: rgba(6,182,212,.15); border-color: var(--cyan); color: var(--cyan); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    #cmd-output {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .75rem;
+      font-size: .75rem;
+      color: var(--green);
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+      margin-bottom: 1rem;
+    }
+    #cmd-output.visible { display: block; }
+
+    .section-title { font-size: .85rem; color: var(--cyan); margin-bottom: .5rem; padding-bottom: .25rem; border-bottom: 1px solid var(--border); }
+    .empty { color: var(--muted); font-size: .8rem; padding: .5rem; }
+    #error-banner {
+      background: rgba(239,68,68,.15);
+      border: 1px solid var(--red);
+      color: var(--red);
+      padding: .5rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: .8rem;
+      display: none;
+    }
+    #error-banner.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>&#x1F5A7; AI Network OS</h1>
+  <span id="refresh-indicator">Loading...</span>
+</header>
+
+<div id="error-banner"></div>
+
+<div class="actions">
+  <button class="primary" onclick="quickDeploy('robot-tank')">&#x25B6; Deploy robot-tank</button>
+  <button onclick="refreshNow()">&#x27F3; Refresh</button>
+  <button onclick="showNodes()">&#x1F4BB; Show Nodes JSON</button>
+  <button onclick="showStatus()">&#x1F4CA; Full Status</button>
+  <button onclick="clearOutput()">&#x2715; Clear Output</button>
+</div>
+
+<pre id="cmd-output"></pre>
+
+<div class="grid" id="nodes-grid">
+  <div class="card"><div class="card-title">Loading nodes...</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem" id="bottom-grid">
+  <div class="card" id="containers-card">
+    <div class="section-title">Docker Containers</div>
+    <div class="empty">Loading...</div>
+  </div>
+  <div class="card" id="jobs-card">
+    <div class="section-title">Scheduled Jobs</div>
+    <div class="empty">Loading...</div>
+  </div>
+</div>
+
+<div class="card" id="history-card" style="margin-bottom:1rem">
+  <div class="section-title">Recent Commands</div>
+  <div class="empty">Loading...</div>
+</div>
+
+<script>
+  const API = '';  // same origin via Caddy reverse proxy at /api
+  const TOKEN = localStorage.getItem('net-os-token') || 'netosmasterkey';
+  const REFRESH_INTERVAL = 10000;
+  let refreshTimer = null;
+  let lastRefresh = null;
+
+  const headers = () => ({ 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' });
+
+  function setOutput(text, visible = true) {
+    const el = document.getElementById('cmd-output');
+    el.textContent = text;
+    el.classList.toggle('visible', visible);
+    if (visible) el.scrollTop = el.scrollHeight;
+  }
+
+  function appendOutput(text) {
+    const el = document.getElementById('cmd-output');
+    el.classList.add('visible');
+    el.textContent += text;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function clearOutput() { setOutput('', false); }
+
+  function showError(msg) {
+    const el = document.getElementById('error-banner');
+    el.textContent = msg;
+    el.classList.add('visible');
+    setTimeout(() => el.classList.remove('visible'), 8000);
+  }
+
+  function barClass(pct) {
+    if (pct < 60) return 'low';
+    if (pct < 85) return 'med';
+    return 'high';
+  }
+
+  function renderMetric(label, val) {
+    const pct = typeof val === 'number' ? val : 0;
+    const cls = barClass(pct);
+    return `<div class="metric">
+      <div class="metric-val">${typeof val === 'number' ? val.toFixed(0) + '%' : val ?? '—'}</div>
+      <div class="metric-label">${label}</div>
+      <div class="bar"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+
+  function renderNodeCard(name, nodeData) {
+    const h = nodeData.last_health || {};
+    const online = h.status === 'online';
+    const statusClass = online ? 'online' : 'offline';
+    return `<div class="card node-card ${statusClass}">
+      <div class="node-name">
+        <span>${nodeData.display || name}</span>
+        <span class="status-dot ${statusClass}" title="${online ? 'Online' : 'Offline'}"></span>
+      </div>
+      <div class="node-ip">${nodeData.ip}${nodeData.tailscale_ip ? ' · TS:' + nodeData.tailscale_ip : ''} · ${nodeData.os || '?'}</div>
+      ${online ? `<div class="metrics">
+        ${renderMetric('CPU', h.cpu_percent)}
+        ${renderMetric('RAM', h.ram_percent)}
+        ${renderMetric('Disk', h.disk_percent)}
+      </div>` : `<div style="color:var(--red);font-size:.8rem;margin-top:.5rem">${h.error || 'Unreachable'}</div>`}
+      <div class="node-ip" style="margin-top:.5rem">${h.polled_at ? 'Polled: ' + new Date(h.polled_at).toLocaleTimeString() : ''}</div>
+    </div>`;
+  }
+
+  function renderContainers(containers) {
+    if (!containers || !containers.length) return '<div class="empty">No containers</div>';
+    return `<table>
+      <thead><tr><th>Name</th><th>Image</th><th>Status</th></tr></thead>
+      <tbody>${containers.map(c => `<tr>
+        <td>${c.name || '?'}</td>
+        <td style="color:var(--muted)">${(c.image || '').split(':')[0]}</td>
+        <td><span class="badge ${c.status?.startsWith('Up') ? 'badge-green' : 'badge-red'}">${c.status || c.error || '?'}</span></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  function renderJobs(jobs) {
+    if (!jobs || !jobs.length) return '<div class="empty">No scheduled jobs</div>';
+    return `<table>
+      <thead><tr><th>Name</th><th>Next Run</th></tr></thead>
+      <tbody>${jobs.map(j => `<tr>
+        <td>${j.name}</td>
+        <td style="color:var(--muted)">${j.next_run ? new Date(j.next_run).toLocaleString() : '—'}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  function renderHistory(cmds) {
+    if (!cmds || !cmds.length) return '<div class="empty">No recent commands</div>';
+    const recent = [...cmds].reverse().slice(0, 15);
+    return `<table>
+      <thead><tr><th>Time</th><th>Node</th><th>Command</th><th>Code</th></tr></thead>
+      <tbody>${recent.map(c => `<tr>
+        <td style="color:var(--muted)">${new Date(c.ts).toLocaleTimeString()}</td>
+        <td><span class="badge badge-blue">${c.node}</span></td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.cmd}</td>
+        <td><span class="badge ${c.returncode === 0 ? 'badge-green' : 'badge-red'}">${c.returncode}</span></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  async function fetchStatus() {
+    const resp = await fetch(`${API}/api/status`, { headers: headers() });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+    return resp.json();
+  }
+
+  function renderAll(data) {
+    // Nodes
+    const nodesGrid = document.getElementById('nodes-grid');
+    const nodes = data.nodes || {};
+    if (Object.keys(nodes).length === 0) {
+      nodesGrid.innerHTML = '<div class="card"><div class="empty">No nodes registered</div></div>';
+    } else {
+      nodesGrid.innerHTML = Object.entries(nodes).map(([n, d]) => renderNodeCard(n, d)).join('');
+    }
+
+    // Containers
+    document.getElementById('containers-card').innerHTML =
+      '<div class="section-title">Docker Containers</div>' +
+      renderContainers(data.docker_containers);
+
+    // Jobs
+    document.getElementById('jobs-card').innerHTML =
+      '<div class="section-title">Scheduled Jobs</div>' +
+      renderJobs(data.scheduled_jobs);
+
+    // History
+    document.getElementById('history-card').innerHTML =
+      '<div class="section-title">Recent Commands</div>' +
+      renderHistory(data.recent_commands);
+
+    // Timestamp
+    lastRefresh = new Date();
+    document.getElementById('refresh-indicator').textContent =
+      `Updated: ${lastRefresh.toLocaleTimeString()} · Next in 10s`;
+  }
+
+  async function refreshNow() {
+    document.getElementById('refresh-indicator').textContent = 'Refreshing...';
+    try {
+      const data = await fetchStatus();
+      renderAll(data);
+    } catch (err) {
+      showError(`Failed to fetch status: ${err.message}`);
+      document.getElementById('refresh-indicator').textContent = 'Error — retrying...';
+    }
+  }
+
+  async function quickDeploy(project) {
+    setOutput(`[net-os] Deploying ${project}...\n`);
+    try {
+      const resp = await fetch(`${API}/api/deploy`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ project }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        appendOutput(`[error] ${resp.status}: ${err.detail || resp.statusText}\n`);
+        return;
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        appendOutput(decoder.decode(value));
+      }
+    } catch (err) {
+      appendOutput(`[error] ${err.message}\n`);
+    }
+  }
+
+  async function showNodes() {
+    try {
+      const resp = await fetch(`${API}/api/nodes`, { headers: headers() });
+      const data = await resp.json();
+      setOutput(JSON.stringify(data, null, 2));
+    } catch (err) {
+      showError(`Failed: ${err.message}`);
+    }
+  }
+
+  async function showStatus() {
+    try {
+      const data = await fetchStatus();
+      setOutput(JSON.stringify(data, null, 2));
+    } catch (err) {
+      showError(`Failed: ${err.message}`);
+    }
+  }
+
+  // Auto-refresh loop
+  function startRefreshLoop() {
+    refreshNow();
+    refreshTimer = setInterval(refreshNow, REFRESH_INTERVAL);
+  }
+
+  // PWA install prompt
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const btn = document.createElement('button');
+    btn.textContent = '+ Install App';
+    btn.onclick = async () => {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') btn.remove();
+      deferredPrompt = null;
+    };
+    document.querySelector('.actions').appendChild(btn);
+  });
+
+  // Service worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+
+  startRefreshLoop();
+</script>
+</body>
+</html>

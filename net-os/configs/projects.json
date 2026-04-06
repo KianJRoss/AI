@@ -1,0 +1,32 @@
+{
+  "robot-tank": {
+    "node": "pi",
+    "cmd": "cd ~/robot-tank && git pull && python3 tools/deploy_rp2040.py",
+    "cwd": null,
+    "description": "Deploy robot-tank firmware to RP2040"
+  },
+  "archon": {
+    "node": "pc",
+    "cmd": "cd C:\\Users\\batma\\Documents\\Archon && docker compose up -d --build",
+    "cwd": "C:\\Users\\batma\\Documents\\Archon",
+    "description": "Start Archon knowledge management system"
+  },
+  "assistant2": {
+    "node": "pc",
+    "cmd": "cd C:\\Users\\batma\\Documents\\Docs\\Assistant2 && pip install -r requirements.txt -q && python main.py",
+    "cwd": "C:\\Users\\batma\\Documents\\Docs\\Assistant2",
+    "description": "Start modular AI assistant"
+  },
+  "chemcode": {
+    "node": "pc",
+    "cmd": "cd C:\\Users\\batma\\Documents\\Docs\\ChemCode && npx http-server -p 8000 -c-1",
+    "cwd": "C:\\Users\\batma\\Documents\\Docs\\ChemCode",
+    "description": "Start ChemCode chemistry education server"
+  },
+  "ai-kernel": {
+    "node": "pc",
+    "cmd": "cd C:\\AI\\ai-kernel && make dev",
+    "cwd": "C:\\AI\\ai-kernel",
+    "description": "Start AI kernel multi-agent system"
+  }
+}
